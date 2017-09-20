@@ -1,5 +1,6 @@
 import os
 import re
+import contextlib
 import requests
 from urlparse import urljoin
 import json
@@ -84,6 +85,26 @@ class ScreenshotsClient(object):
             {"id": shot_id, "expiration": str(seconds), "_csrf": csrf})
         resp.raise_for_status()
 
+    def set_title(self, url, new_title):
+        shot_id = self._get_id_from_url(url)
+        csrf = self.read_shot(url)["csrf"]
+        assert csrf, "No CSRF found"
+        resp = self.session.post(
+            urljoin(urljoin(self.backend, '/api/set-title/'), shot_id),
+            {"id": shot_id, "title": new_title, "_csrf": csrf})
+        resp.raise_for_status()
+
+    def edit_shot(self, url, edits):
+        shot_id = self._get_id_from_url(url)
+        csrf = self.read_shot(url)["csrf"]
+        assert csrf, "No CSRF found"
+        body = {"shotId": shot_id, "_csrf": csrf}
+        body.update(edits)
+        resp = self.session.post(
+            urljoin(self.backend, '/api/save-edit'),
+            body)
+        resp.raise_for_status()
+
     def delete_shot(self, url):
         shot_id = self._get_id_from_url(url)
         csrf = self.read_shot(url)["csrf"]
@@ -102,14 +123,26 @@ class ScreenshotsClient(object):
     def read_my_shots(self):
         resp = self.session.get(urljoin(self.backend, "/shots"))
         resp.raise_for_status()
+        return resp
 
     def search_shots(self, q):
         resp = self.session.get(urljoin(self.backend, "/shots"), params={"q": q})
         resp.raise_for_status()
 
+    def get_settings(self):
+        resp = self.session.get(urljoin(self.backend, "/settings/"))
+        resp.raise_for_status()
+        return resp
 
-def make_example_shot(deviceId, pad_image_to_length=None, **overrides):
-    image = random.choice(example_images)
+    def get_uri(self, uri):
+        return self.session.get(urljoin(self.backend, uri))
+
+
+def make_example_shot(deviceId, pad_image_to_length=None, image_index=None, **overrides):
+    if image_index is None:
+        image = random.choice(example_images)
+    else:
+        image = example_images[image_index]
     text = []
     for i in range(10):
         text.append(random.choice(text_strings))
@@ -168,3 +201,14 @@ def make_uuid():
 
 def make_random_id():
     return make_uuid()[:16]
+
+
+@contextlib.contextmanager
+def screenshots_session(backend=None):
+    if backend:
+        user = ScreenshotsClient(backend=backend)
+    else:
+        user = ScreenshotsClient()
+    user.login()
+    yield user
+    user.delete_account()

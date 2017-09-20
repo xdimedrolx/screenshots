@@ -82,6 +82,7 @@ exports.changeShotExpiration = function(shot, expiration) {
     if (req.status >= 300) {
       let errorMessage = document.getElementById("shotPageAlertErrorUpdatingExpirationTime").textContent;
       window.alert(errorMessage);
+      window.Raven.captureException(new Error(`Error calling /api/set-expiration: ${req.status} ${req.statusText}`));
     } else {
       if (expiration === 0) {
         model.shot.expireTime = model.expireTime = null;
@@ -109,12 +110,44 @@ exports.deleteShot = function(shot) {
       // FIXME: a lame way to do an error message
       let errorMessage = document.getElementById("shotPageAlertErrorDeletingShot").textContent;
       window.alert(errorMessage);
+      window.Raven.captureException(new Error(`Error calling /api/delete-shot: ${req.status} ${req.statusText}`));
     } else {
       location.href = model.backend + "/shots";
     }
   };
   req.send(`id=${encodeURIComponent(shot.id)}&_csrf=${encodeURIComponent(model.csrfToken)}`);
 };
+
+exports.saveEdit = function(shot, shotUrl) {
+  var url = model.backend + "/api/save-edit";
+  var body = JSON.stringify({
+    shotId: shot.id,
+    _csrf: model.csrfToken,
+    url: shotUrl
+  });
+  var req = new Request(url, {
+    method: 'POST',
+    credentials: 'include',
+    headers: new Headers({
+      'content-type': 'application/json'
+    }),
+    body
+  });
+  return fetch(req).then((resp) => {
+    if (!resp.ok) {
+      var errorMessage = "Error saving edited shot";
+      window.alert(errorMessage);
+      window.Raven.captureException(new Error(`Error calling /api/save-edit: ${req.status} ${req.statusText}`));
+    } else {
+      location.reload();
+    }
+  }).catch((error) => {
+    var errorMessage = "Connection error";
+    window.alert(errorMessage);
+    window.Raven.captureException(error);
+    throw error;
+  });
+}
 
 function refreshHash() {
   if (location.hash === "#fullpage") {
@@ -181,6 +214,7 @@ exports.setTitle = function(title) {
     if (req.status >= 300) {
       let errorMessage = document.getElementById("shotPageAlertErrorUpdatingTitle").textContent;
       window.alert(errorMessage);
+      window.Raven.captureException(new Error(`Error calling /api/set-title: ${req.status} ${req.statusText}`));
       return;
     }
     model.shot.userTitle = title;

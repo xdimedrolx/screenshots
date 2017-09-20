@@ -232,6 +232,7 @@
   flex: 0 auto;
   margin: 20px auto;
   max-width: 90%;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.05);
 }
 
 .link-button {
@@ -245,4 +246,163 @@
 
 #clip-image-context {
   display: none;
+}
+
+.edit,
+.pen-button,
+.highlight-button {
+  background-size: $grid-unit $grid-unit;
+  background-repeat: no-repeat;
+  background-position: center center;
+  margin-right: $grid-unit * 0.5;
+  transition: background-image 150ms $bezier;
+}
+
+.highlight-button {
+  background-image: url("../img/annotation-highlight.svg");
+
+  &:hover {
+    background-color: $light-hover;
+  }
+
+  &:active,
+  &.active {
+    background-image: url("../img/annotation-highlight-active.svg");
+  }
+}
+
+.pen-button {
+  background-image: url("../img/annotation-pen.svg");
+
+  &:hover {
+    background-color: $light-hover;
+  }
+
+  &:active,
+  &.active {
+    background-image: url("../img/annotation-pen-active.svg");
+  }
+}
+
+html {
+  min-height: 100%;
+  position: relative;
+}
+
+body {
+  width: 100%;
+  margin: 0;
+  height: 100%;
+}
+
+.editor-header {
+  @include respond-to("medium") {
+    @include flex-container(row, space-between, stretch);
+    height: $grid-unit * 5;
+  }
+
+  @include respond-to("small") {
+    @include flex-container(row, space-between, stretch, wrap);
+  }
+  z-index: 9999;
+  width: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: $grid-unit * 5;
+  align-items: center;
+  background: #f9f9fa;
+
+  .button {
+    margin: $grid-unit * 0.25;
+  }
+
+  .cancel,
+  .save {
+    min-width: 100px;
+  }
+
+  .cancel {
+    background-color: $light-default;
+    border: 1px solid #9b9b9b;
+
+    &:hover {
+      background-color: $light-hover;
+    }
+
+    &:active {
+      background-color: $light-active;
+    }
+  }
+}
+
+.annotation-actions {
+  justify-content: center;
+  overflow: visible;
+  @include respond-to("small") {
+    background: none;
+    border-bottom: none;
+    border-top: none;
+  }
+}
+
+.annotation-tools {
+  display: flex;
+  flex-direction: row;
+  background: #fff;
+  box-shadow: rgba(0, 0, 0, 0.15) 0 2px 4px;
+  border-radius: $border-radius;
+
+  & .button:first-child{
+    margin-right: 0;
+  }
+}
+
+.annotation-alt-actions {
+  height: 72px;
+  @include respond-to("small") {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.main-container {
+  z-index: 9990;
+  position: absolute;
+  top: $grid-unit * 5;
+  left: 0;
+  height: calc(100% - 100px);
+  width: 100%;
+  background-color: #f9f9fa;
+  text-align: center;
+}
+
+.canvas-container .editor {
+  z-index: 2;
+
+  &.pen {
+    cursor: url("../img/cursor-pen.png"), auto;
+  }
+  &.highlighter {
+    cursor: url("../img/cursor-highlight.png"), auto;
+  }
+}
+
+.highlighter {
+  mix-blend-mode: multiply;
+  z-index: 1;
+}
+
+.image-holder {
+  z-index: 0;
+}
+
+.centered {
+  position: absolute;
+  top: $grid-unit * 4;
+  left: 0;
+  right: 0;
+  margin: auto;
+  overflow: hidden;
+  margin-bottom: 20px;
 }

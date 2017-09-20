@@ -6,6 +6,8 @@ const sendEvent = require("../../browser-send-event.js");
 const { ShareButton } = require("../../share-buttons");
 const { TimeDiff } = require("./time-diff");
 const reactruntime = require("../../reactruntime");
+const { Editor } = require("./editor");
+const { isValidClipImageUrl } = require("../../../shared/shot");
 
 class Clip extends React.Component {
   constructor(props) {
@@ -33,6 +35,9 @@ class Clip extends React.Component {
     let clip = this.props.clip;
     if (!clip.image) {
       console.warn("Somehow there's a shot without an image");
+      return null;
+    }
+    if (!isValidClipImageUrl(clip.image.url)) {
       return null;
     }
     let node = <img id="clipImage" style={{height: "auto", width: clip.image.dimensions.x + "px", maxWidth: "100%" }} ref={clipImage => this.clipImage = clipImage} src={ clip.image.url } alt={ clip.image.text } />;
@@ -138,6 +143,9 @@ class Head extends React.Component {
   }
 
   makeEmbeddedImageUrl(url, type) {
+    if (!isValidClipImageUrl(url)) {
+      return "";
+    }
     if (!url.startsWith("http")) {
       return url;
     }
@@ -157,7 +165,8 @@ class Body extends React.Component {
     this.state = {
       hidden: false,
       closeBanner: false,
-      isChangingExpire: false
+      isChangingExpire: false,
+      imageEditing: false
     };
   }
 
@@ -188,7 +197,19 @@ class Body extends React.Component {
     if (this.props.expireTime !== null && Date.now() > this.props.expireTime) {
       return this.renderExpired();
     }
+    if (this.state.imageEditing) {
+     return this.renderEditor();
+    }
     return this.renderBody();
+  }
+
+  renderEditor() {
+    let shot = this.props.shot;
+    let clipNames = shot.clipNames();
+    let clip = shot.getClip(clipNames[0]);
+    return <reactruntime.BodyTemplate {...this.props}>
+        <Editor clip={clip} onCancelEdit={this.onCancelEdit.bind(this)} onClickSave={this.onClickSave.bind(this)}></Editor>
+    </reactruntime.BodyTemplate>;
   }
 
   renderBlock() {
@@ -314,14 +335,17 @@ class Body extends React.Component {
     }
 
     let trashOrFlagButton;
+    let editButton;
     if (this.props.isOwner) {
       trashOrFlagButton = <Localized id="shotPageDeleteButton">
         <button className="button transparent trash" title="Delete this shot permanently" onClick={ this.onClickDelete.bind(this) }></button>
       </Localized>;
+      editButton = <button className="button transparent edit" title="Edit this image" onClick={ this.onClickEdit.bind(this) }></button>
     } else {
       trashOrFlagButton = <Localized id="shotPageAbuseButton">
         <button className="button transparent flag" title="Report this shot for abuse, spam, or other problems" onClick={ this.onClickFlag.bind(this) }></button>
       </Localized>;
+      editButton = null;
     }
 
     let myShotsHref = "/shots";
@@ -339,11 +363,15 @@ class Body extends React.Component {
       myShotsHref = "/";
     }
 
+    let clip;
     let clipUrl = null;
     if (clipNames.length) {
       let clipId = clipNames[0];
-      let clip = this.props.shot.getClip(clipId);
+      clip = this.props.shot.getClip(clipId);
       clipUrl = clip.image.url;
+      if (!isValidClipImageUrl(clipUrl)) {
+        clipUrl = "";
+      }
     }
 
     let renderGetFirefox = this.props.userAgent && (this.props.userAgent + "").search(/firefox\/\d{1,255}/i) === -1;
@@ -379,6 +407,7 @@ class Body extends React.Component {
           </div>
           <div className="shot-alt-actions">
             { trashOrFlagButton }
+            { this.props.enableAnnotations ? editButton : null }
             <ShareButton abTests={this.props.abTests} clipUrl={clipUrl} shot={shot} isOwner={this.props.isOwner} staticLink={this.props.staticLink} renderExtensionNotification={renderExtensionNotification} isExtInstalled={this.props.isExtInstalled} />
             <Localized id="shotPageDownloadShot">
               <a className="button primary" href={ this.props.downloadUrl } onClick={ this.onClickDownload.bind(this) }
@@ -409,6 +438,21 @@ class Body extends React.Component {
       </div>
       <a className="close" onClick={ this.doCloseBanner.bind(this) }></a>
     </div>;
+  }
+
+  onClickEdit() {
+    if (!this.state.imageEditing) {
+      this.setState({imageEditing: true});
+      sendEvent("start-annotations", "navbar");
+    }
+  }
+
+  onClickSave(dataUrl) {
+    this.props.controller.saveEdit(this.props.shot, dataUrl);
+  }
+
+  onCancelEdit(imageEditing) {
+    this.setState({imageEditing});
   }
 
   clickedInstallExtension() {

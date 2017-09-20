@@ -1,4 +1,6 @@
 /* globals ADDON_DISABLE */
+// TODO: re-enable
+/* eslint-disable */
 const OLD_ADDON_PREF_NAME = "extensions.jid1-NeEaf3sAHdKHPA@jetpack.deviceIdInfo";
 const OLD_ADDON_ID = "jid1-NeEaf3sAHdKHPA@jetpack";
 const ADDON_ID = "screenshots@mozilla.org";
@@ -71,7 +73,10 @@ const LibraryButton = {
   init(webExtension) {
     this._initialized = true;
     let permissionPages = [...webExtension.extension.permissions].filter(p => (/^https?:\/\//i).test(p));
-    this.PAGE_TO_OPEN = permissionPages.length ? permissionPages[0].replace(/\*$/, "") : "https://screenshots.firefox.com/";
+    if (permissionPages.length > 1) {
+      Cu.reportError(new Error("Should not have more than 1 permission page, but got: " + JSON.stringify(permissionPages)));
+    }
+    this.PAGE_TO_OPEN = permissionPages.length == 1 ? permissionPages[0].replace(/\*$/, "") : "https://screenshots.firefox.com/";
     this.PAGE_TO_OPEN += "shots";
     this.ICON_URL = webExtension.extension.getURL("icons/icon-16-v2.svg");
     this.ICON_URL_2X = webExtension.extension.getURL("icons/icon-32-v2.svg");
@@ -93,6 +98,7 @@ const LibraryButton = {
       }
     }
     CustomizableUI.removeListener(this);
+    this._initialized = false;
   },
 
   onWindowOpened(win) {
@@ -177,7 +183,7 @@ function start(webExtension) {
   return webExtension.startup(startupReason).then((api) => {
     api.browser.runtime.onMessage.addListener(handleMessage);
     LibraryButton.init(webExtension);
-    initPhotonPageAction(api);
+    initPhotonPageAction(api, webExtension);
   }).catch((err) => {
     // The startup() promise will be rejected if the webExtension was
     // already started (a harmless error), or if initializing the
@@ -229,7 +235,7 @@ let photonPageAction;
 // a Photon page action and removes the UI for the WebExtension browser action.
 // Does nothing otherwise.  Ideally, in the future, WebExtension page actions
 // and Photon page actions would be one in the same, but they aren't right now.
-function initPhotonPageAction(api) {
+function initPhotonPageAction(api, webExtension) {
   // The MOZ_PHOTON_THEME ifdef got removed, but we need to support 55 and 56 as well,
   // so check if the property exists *and* is false before bailing.
   if (typeof AppConstants.MOZ_PHOTON_THEME != "undefined" && !AppConstants.MOZ_PHOTON_THEME) {
@@ -239,25 +245,22 @@ function initPhotonPageAction(api) {
 
   let id = "screenshots";
   let port = null;
-  let baseIconPath = addonResourceURI.spec + "webextension/";
 
-  let {Management: {global: {tabTracker}}} = Cu.import("resource://gre/modules/Extension.jsm", {});
+  let {tabManager} = webExtension.extension;
 
   // Make the page action.
   photonPageAction = PageActions.actionForID(id) || PageActions.addAction(new PageActions.Action({
     id,
     title: "Take a Screenshot",
-    iconURL: baseIconPath + "icons/icon-32-v2.svg",
+    iconURL: webExtension.extension.getURL("icons/icon-32-v2.svg"),
     _insertBeforeActionID: null,
     onCommand(event, buttonNode) {
       if (port) {
         let browserWin = buttonNode.ownerGlobal;
+        let tab = tabManager.getWrapper(browserWin.gBrowser.selectedTab);
         port.postMessage({
           type: "click",
-          tab: {
-            url: browserWin.gBrowser.selectedBrowser.currentURI.spec,
-            id: tabTracker.getId(browserWin.gBrowser.selectedTab),
-          },
+          tab: {id: tab.id, url: tab.url}
         });
       }
     },
@@ -287,7 +290,7 @@ function initPhotonPageAction(api) {
           photonPageAction.title = message.title;
         }
         if (message.iconPath) {
-          photonPageAction.iconURL = baseIconPath + message.iconPath;
+          photonPageAction.iconURL = webExtension.extension.getURL(message.iconPath);
         }
         break;
       default:

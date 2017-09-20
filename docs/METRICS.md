@@ -1,6 +1,6 @@
 ## Firefox Screenshots Metrics
 
-*Last Update: 2017-03-21*
+*Last Update: 2017-08-17*
 
 This document is a summary of the metrics Firefox Screenshots will record, how we're recording them, and what we're looking for in those metrics.  There are two main areas we'll look at:
 
@@ -281,6 +281,16 @@ These are events that an add-on user can encounter on a shot they own
 3. [x] Views of images that came from og/twitter metadata, `/images/embedded/{hash}`
 
 The hashed page ID (`{hash}`) is a simple SHA1(path), with no additional randomness or salt added.
+
+#### Annotation metrics
+
+1. [x] Open annotation tools: `web/start-annotations/navbar`
+1. [x] Save Edited shot: `web/save/annotation-toolbar`
+2. [x] Cancel Annotations: `web/cancel/annotation-toolbar`
+3. [x] Select pen from annotation toolbar: `web/pen-select/annotation-toolbar`
+4. [x] Deselect pen from annotation toolbar: `web/pen-deselect/annotation-toolbar`
+5. [x] Select highlighter from annotation toolbar: `web/highlighter-select/annotation-toolbar`
+6. [x] Deselect highlighter from annotation toolbar: `web/highlighter-deselect/annotation-toolbar`
 
 #### General Google Analytics information
 
